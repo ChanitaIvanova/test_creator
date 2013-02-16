@@ -2,10 +2,10 @@
 use strict;
 use warnings;
 use diagnostics;
-require "./test.pl";
-#require './generate_test';
+require "./lib/Test.pl";
+use Data::Dumper qw/Dumper/;
 package TestCreatorInterface;
-
+require "./lib/generate_test.pl";
 use Switch 'Perl6';
 sub creat_test;
 sub creat_closed_question;
@@ -16,29 +16,38 @@ sub ask;
 sub test;
 sub generate;
 sub run;
+use Getopt::Long;
+use Pod::Usage;
+#execute parses the line given
+#from STDIN and executes the corresponding command
   sub execute{
     my $line = shift;
-      if($line =~ m/^creat\s+(.+)\s*$/) { 
+      if($line =~ m/^create\s+(.+)\s*$/) { 
         return creat_test($1);}
-      if($line=~ m/^start\s+(.+?)\s*(\d*)\s*$/) {
-        
+      if($line=~ m/^start\s+(.+?)\b\s*(\d*)\s*$/) {
         if ($2) {  return test(Test::load($1),$2);}
-        else{
-        return test(Test::load($1));}}
-      if($line=~ m/^generate\s+(.+?)\s*(\d*)\s*$/ ){
-        if (!$2) { return generate($1,$2);}
-        else{
-        return generate($1);}
+        else{return test(Test::load($1));}}
+      if($line=~ m/^generate\s+(.+?)\b\s*(\d*)\s*$/ ){
+        #print Dumper($1,$2);
+        if($2){ return generate($1,$2);}
+        else{return generate($1);}
       }
-      if($line eq 'help') { }
+      if($line eq 'help') {pod2usage(-verbose => 2,-exitval=>'NOEXIT' ); return; }
       if($line eq 'exit') { exit(0); }
-      print "Not valid command! Try typeing \'help\'\n";
-   
+      print "Not valid command! Try typeing 'help'\n";
   }
-
+#create_test takes questions and answers from the
+#command line and creates closed or open questions
+#withch are put in a test and the test is saved in the given
+#directory
   sub creat_test{
     my $address = shift;
-    my @questions ;
+    my @questions;
+    print "When you've given all the answers you wanted write
+\"last\" as an answer and you will go back to creating your next question
+or you will have to write witch are the correct answers if you are craeting
+an closed question.
+Write help for other information.\n";
     while(1) {
       print '~~';
       my $line =<>;
@@ -49,17 +58,21 @@ sub run;
         when m/\s*finish\s*/ { 
            my $test = new Test(\@questions); 
           return $test->creat_file($address); }
+        when m/\s*help\s*/ {pod2usage(-verbose => 2,-exitval=>'NOEXIT' );}
         when m/\s*exit\s*/ { exit(0);}
-        default {print "Not valid command! Try typeing \'help\'\n";}
-        }
+        default {print "Not valid command! Try typeing 'help'\n";}
       }
+    }
   }
-  
+  #with this function the user could create a closed question
+  #the user inputs a question, answers and correct answers
+  #and the function creates a ClosedQuestion to put in the test
+  #that the user is creating
   sub creat_closed_question{
-    print "Write question:\n~~" ;
+    print "Write question:\n" ;
     my $line =<>;
-     chomp $line;
-     my $question =  $line;
+    chomp $line;
+    my $question =  $line;
     print "Write Answers:\n";
     my $options = 65;
     my $answers=[];
@@ -68,12 +81,10 @@ sub run;
       $options++;
       $line =<>;
       chomp($line);
-     
-      if ($line=~ m/last/) { last;}
-      
+      if($line=~ m/last/) { last;}
       push(@$answers,$line);
     }
-    print "Correct answers\n~~";
+    print "Correct answers\n";
     $line = <>;
     chomp $line;
     my @correct = split(/,* */,$line);
@@ -81,12 +92,15 @@ sub run;
     (ord $_) - 64} @correct;
     return new ClosedQuestion($question,$answers,\@correct);
   }
-  
+  #with this function the user could create an open question
+  #the user inputs a question and possible answers 
+  #and the function creates an OpenQuestion to put in the test
+  #that the user is creating
   sub creat_open_question{
-    print "Write question:\n~~"; 
+    print "Write question:\n"; 
     my $line =<>;
-     chomp $line;
-     my $question = $line;
+    chomp $line;
+    my $question = $line;
     print "Write Answers:\n";
     my $options = 65;
     my @answers;
@@ -100,7 +114,11 @@ sub run;
     }
     return (new OpenQuestion($question,\@answers));
   }
-
+  #open_ask is given an open question
+#it prints the question 
+#and takes the user's answer
+#then it produces an OpenAnswer
+#so that a response could be given to the user
   sub open_ask{
     my $open = shift;
     print $open->{question}."\n";
@@ -108,22 +126,28 @@ sub run;
     chomp $line;
     return (new OpenAnswers($open,$line));
   }
-
+#closed_ask is given a closed question
+#it prints the question and the answers
+#so that the user could see them
+#and takes the user's answer
+#then it produces a ClosedAnswer
+#so that a response could be given to the user
   sub closed_ask{
     my $closed = shift;
     print $closed->{question}."\n";
     my $options = 65;
     my $array_answers = $closed->{answers};
     map{ print chr($options).": " .$_. "\n"; 
-       $options++;
-     } @$array_answers;
+      $options++;
+    } @$array_answers;
     my $line =<>;
     chomp $line;
     my @user_answers= split(/,* */, $line);
     @user_answers = map{ord($_) - 64} @user_answers;
     return (new ClosedAnswers($closed,\@user_answers));
   }
-  
+ #ask helps find out what kind of question
+#is going to be asked the user -open or closed
   sub ask{
     my $question = shift;
     if (ref($question) eq ref(new ClosedQuestion("",[],[]))){return closed_ask($question);}
@@ -135,7 +159,8 @@ sub run;
     my $count = shift;
     my $array_questions = $test->{questions};
     my $question;
-    if ((!$count) or ($count > (scalar @$array_questions))){$count = (scalar @$array_questions);}
+    if ((!$count) or ($count > (scalar @$array_questions))){
+      $count = (scalar @$array_questions);}
     my @test_questions;
     my @answers;
     map{ push(@test_questions,$_ );} @$array_questions;
@@ -160,16 +185,15 @@ sub run;
     my $address = shift;
     my $count = shift;
     print "Title of the test: ";
-    my $line =<>;
-    my $title = chomp $line;
+    my $title =<>;
+    chomp $title;
     print "Address for the test: ";
-    $line =<>;
-    my $address_test = chomp $line;
+    my $address_test =<>;
+    chomp $address_test;
     print "Address for the answers: ";
-    $line =<>;
-    my $address_answers = chomp $line;
-    my $test = Test::load($address);
-    #Generate::create($test,$count,$address_test,$address_answers,$title);
+    my $line =<>;
+    chomp $line;
+    generate_test($address,$address_test,$line,$title,$count);
   }
 
   sub run{
@@ -181,3 +205,73 @@ sub run;
     }
   }
 run;
+__END__;
+=head1 NAME
+
+    Test Creator - A program to help you create tests and test your 
+   knowledge on allready existing tests.
+
+
+=cut
+
+=head1 SYNOPSIS
+
+      Test Creator helps you create tests, with witch later you could
+    test yours or someone else's knowledge or you could create text 
+    files with questions from the tests and text files with the 
+    corresponding answers to those questions.
+
+
+=cut
+
+=head1 OPTIONS
+
+
+
+=head2 - create DIRECTORY
+
+      With this you create new test in DIRECTORY 
+        (you should append the name of the test to DIRECTORY)
+      
+   Here you have four options:
+   
+=over 12
+
+=item B<closed>  
+
+Starts the creation of a closed question.
+   
+=item B<open>  
+
+Starts the creation of an open question.
+   
+=item B<finish>  
+
+Saves the test you've created!
+   
+=item B<exit>   
+
+Exits the program without saving the test.
+
+  
+=back
+
+=cut
+
+
+
+=head2 - start DIRECTORY [COUNT]
+
+        With this you start the test pointed thru DIRECTORY 
+      if you have pointed a COUNT- this number of questions 
+      will be taken from the test.
+
+=cut
+=head2 - generate DIRECTORY [COUNT]
+
+        With this you generate a test in a text file pointed thru DIRECTORY 
+      if you have pointed a COUNT- this number of questions 
+      will be taken from the test and put in the text file.
+
+=cut
+
