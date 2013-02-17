@@ -43,7 +43,7 @@ package Test;
     my $address = shift;
     my $array = $self->{questions};
     my($array_answers,$array_correct);
-    open FILE,">>",$address;
+    open FILE,">",$address;
     map{
       if(ref($_) eq ref(new OpenQuestion("",[]))){
         print FILE "QU: Q O: ".$_->{question}." :QOEND \nA O: \n";

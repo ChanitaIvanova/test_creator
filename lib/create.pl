@@ -59,7 +59,7 @@ sub closed{
     -command =>sub {more_entrys();});
     $more->pack(-side=>'bottom',-padx=>0, -pady=>10);  
   
-
+ $correct ="";
  my $correct_button = $f2->Button( 
     -text=> "Correct Answers" ,
     );
@@ -107,20 +107,24 @@ sub open_question{
    
 }
 sub save_question{ 
-  print Dumper(@answers);
-  @answers=map {$$_} @answers;
-  print Dumper(@answers);
-    if($tag == 1){ my @correct = split(/,* */,$correct);
+  #print Dumper(@answers);
+  #@answers=map {$$_} @answers;
+  #print Dumper(@answers);
+    if($tag == 1){if(!$correct){
+    $f2 -> messageBox(-message=>"Please Enter the correct answers.\n",-type=>'ok',-icon=>'warning');
+    return;}      @answers=map {$$_} @answers;
+                  my @correct = split(/,* */,$correct);
                   @correct = map{ord($_) - 64} @correct;
                   my @som_answers = @answers;
-                  print Dumper(\@som_answers);
+                  #print Dumper(\@som_answers);
                    push(@questions,(new ClosedQuestion($variable1,\@som_answers,\@correct)));
                     }
                else{
                   if($tag == 0){
-                    print Dumper(\@answers);
+                    @answers=map {$$_} @answers;
+                    #print Dumper(\@answers);
                     my @som_answers = @answers;
-                    print Dumper(\@som_answers);
+                    #print Dumper(\@som_answers);
                     push(@questions,(new OpenQuestion($variable1,\@som_answers)));}
                 }
                  $tag = -1;
@@ -147,31 +151,39 @@ sub create{
     -text =>"Finish"
     );
     $finish->pack(-side=>'bottom',-padx=>0, -pady=>0);
-    $finish->configure(-command=>sub{$directory = $finish->getSaveFile();
-    print Dumper(@questions);
-     my $test = new Test(\@questions);
-     print Dumper($test);
+    $finish->configure(-command=>sub{
+    if(!@questions){
+      $root -> messageBox(-message=>"You have not entered any questions!\n",-type=>'ok',-icon=>'warning');
+      return;}
+    $directory = $finish->getSaveFile();
+    #print Dumper(@questions);
+    my $test = new Test(\@questions);
+     #print Dumper($test);
     $test->creat_file($directory); 
     $$f1->destroy();
     $$f1=undef;});
   my $closed_button=$$f1->Button(  
     -text => "Closed Question",
-    -command=> sub {print Dumper(@questions);
+    -command=> sub {
       closed($root); }
     );
     $closed_button->pack(-side=>'bottom',-padx=>0, -pady=>0);   
   
 
   my $open_button=$$f1->Button( 
-    -text => "Opened Question",
-    -command=> sub {print Dumper(@questions);
+    -text => "Open Question",
+    -command=> sub {
       open_question($root);}
     );
     $open_button->pack(-side=>'bottom',-padx=>0, -pady=>0);    
 
   my $save_button=$$f1->Button(  
     -text=> "Save Qestion", 
-    -command=> sub {save_question();});
+    -command=> sub {
+    if(!$f2){
+    $root -> messageBox(-message=>"You have not created a question!\n",-type=>'ok',-icon=>'warning');
+    return;}
+      save_question();});
    $save_button-> pack(-side=>'bottom',-padx=>0, -pady=>0);
  }
  1;

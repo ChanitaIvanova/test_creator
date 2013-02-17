@@ -25,6 +25,7 @@ use Pod::Usage;
       if($line =~ m/^create\s+(.+)\s*$/) { 
         return creat_test($1);}
       if($line=~ m/^start\s+(.+?)\b\s*(\d*)\s*$/) {
+        if (!(-e $1)){print "There isn't such test!\n"; return;}
         if ($2) {  return test(Test::load($1),$2);}
         else{return test(Test::load($1));}}
       if($line=~ m/^generate\s+(.+?)\b\s*(\d*)\s*$/ ){
@@ -42,6 +43,12 @@ use Pod::Usage;
 #directory
   sub creat_test{
     my $address = shift;
+    if (-e $address) {
+      print "This file allready exists!\nWould you like to change it?[yes]|[no]:";
+      my $response =<>;
+      chomp $response;
+      if($response eq 'no'){return;}
+    } 
     my @questions;
     print "When you've given all the answers you wanted write
 \"last\" as an answer and you will go back to creating your next question
@@ -153,7 +160,13 @@ Write help for other information.\n";
     if (ref($question) eq ref(new ClosedQuestion("",[],[]))){return closed_ask($question);}
     return open_ask($question);
   }
-
+#test() randomly takes $count questions from $test
+#and asks the user, if $count is 0 or greater then the number
+#of questions in $test then $count is set to be equal of
+#the number questions in the test. For each question test()
+#saves the users answer in array @answers and after all the 
+#questions are answerd it prints statistics about the correct
+#and wrong answers. 
   sub test{
     my $test = shift;
     my $count = shift;
@@ -180,9 +193,18 @@ Write help for other information.\n";
     }
     print "You gave ".($count - $wrong)." correct answers and ".$wrong." wrong answers!\n";
   }
-
+#generate() takes $count questions from $address which
+#is the address of a test and puts them in a text file.
+#If is given $title it is put in the begining of the 
+#text file. If is given an address for the answers
+#in it are saved the corresponding answers to the
+#questions put in the text file.
   sub generate{
     my $address = shift;
+    if (!(-e $address)) {
+      print "There isn't such test!\n";
+      return;
+    } 
     my $count = shift;
     print "Title of the test: ";
     my $title =<>;
@@ -190,9 +212,21 @@ Write help for other information.\n";
     print "Address for the test: ";
     my $address_test =<>;
     chomp $address_test;
+    if (-e $address_test) {
+      print "This file allready exists!\nWould you like to change it?[yes]|[no]:";
+      my $response =<>;
+      chomp $response;
+      if($response eq 'no'){return;}
+    } 
     print "Address for the answers: ";
     my $line =<>;
     chomp $line;
+    if (-e $line) {
+      print "This file allready exists!\nWould you like to change it?[yes]|[no]:";
+      my $response =<>;
+      chomp $response;
+      if($response eq 'no'){return;}
+    } 
     generate_test($address,$address_test,$line,$title,$count);
   }
 

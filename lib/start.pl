@@ -36,7 +36,10 @@ sub start{
   $browse_button->configure(-command=>sub{$directory = $browse_button->getOpenFile();});
   my $test = $$f1->Button(
   -text =>"Test",
-  -command=>sub{test($root,$f1,$directory,\$variable)}
+  -command=>sub{ if(!$directory){
+    $root -> messageBox(-message=>"You have not choosen a test!\n",-type=>'ok',-icon=>'warning');
+    return;}
+    test($root,$f1,$directory,\$variable)}
   );
   $test->pack(-side=>'left',-padx=>5, -pady=>0); 
   
